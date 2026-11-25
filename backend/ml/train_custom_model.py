@@ -42,7 +42,7 @@ def load_dataset():
 
         for audio_path in audio_files:
             try:
-                transcript, _ = transcribe_audio(str(audio_path))
+                transcript, _, _ = transcribe_audio(str(audio_path))
                 if not transcript or len(transcript.strip().split()) < 3:
                     print(f"  [SKIP] Empty transcript: {audio_path.name}")
                     continue

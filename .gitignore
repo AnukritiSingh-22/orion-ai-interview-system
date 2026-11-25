@@ -1,31 +1,34 @@
-# Python
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Python cache
 __pycache__/
 *.py[cod]
 *.pyo
 
-# Virtual environment
-venv/
-
 # Environment variables
 .env
+.env.*
 
-# Model files
+# ML generated files
 *.joblib
+*.pkl
 
-# Uploads / generated files
-uploads/
-
-# Node (if frontend exists)
+# Node
 node_modules/
-dist/
+frontend/dist/
 
 # OS files
 .DS_Store
 
-# Database
+!.env.example
+# Uploads and generated files
+uploads/
 *.sqlite3
 
-# Dataset / large files
-ml/dataset/
+# Dataset and audio files
+backend/ml/dataset/
 *.wav
 *.mp3
