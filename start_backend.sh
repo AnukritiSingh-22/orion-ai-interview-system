@@ -1,5 +1,5 @@
 #!/bin/bash
-# ORION — Quick start backend
+# ORION — Quick start backend.
 set -e
 
 cd "$(dirname "$0")/backend"
