@@ -66,7 +66,8 @@ export default function AnalysisPage() {
     ["Eye contact",       _avg(nonverbal_metrics?.eye_contact_pct)?.toFixed(0) + "%", "> 70% ideal"],
     ["Posture score",     _avg(nonverbal_metrics?.posture_score)?.toFixed(0), "> 70 ideal"],
     ["Distraction events",_avg(nonverbal_metrics?.distraction_events)?.toFixed(0), "< 3 ideal"],
-    ["Dominant emotion",  nonverbal_metrics?.dominant_emotion ?? "—", "Neutral/positive"],
+    ["Vocal emotion",     nonverbal_metrics?.dominant_emotion ?? "—", "From voice tone"],
+    ["Positive tone",     _avg(nonverbal_metrics?.positive_emotion_pct) != null ? _avg(nonverbal_metrics.positive_emotion_pct).toFixed(0) + "%" : "—", "Higher = warmer tone"],
   ];
 
   const sentimentClass = (s) =>

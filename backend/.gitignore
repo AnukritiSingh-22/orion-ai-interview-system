@@ -7,3 +7,4 @@ uploads/
 ml/dataset/weak/*.wav
 ml/dataset/average/*.wav
 ml/dataset/strong/*.wav
+backend/ml/ravdess/

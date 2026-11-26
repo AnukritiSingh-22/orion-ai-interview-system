@@ -130,7 +130,7 @@ Once you have your ORION audio dataset (40+ recordings labelled weak/average/str
 # backend/ml/dataset/strong/  ← "strong" answer .wav files
 
 cd orion/backend
-source venv/bin/activate
+source .venv/bin/activate
 python ml/train_custom_model.py
 ```
 

@@ -32,3 +32,5 @@ uploads/
 backend/ml/dataset/
 *.wav
 *.mp3
+
+backend/ml/ravdess/

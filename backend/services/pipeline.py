@@ -2,7 +2,8 @@
 import os
 import statistics
 from sqlalchemy.orm import Session as DBSession
-
+from collections import Counter
+from services.emotion_analyser import analyse_emotion
 import models
 from services.audio_extractor import extract_audio_from_video
 from services.transcriber import transcribe_audio
@@ -35,6 +36,7 @@ def run_analysis_pipeline(session_id: int, user_id: int, db: DBSession):
     # all objects and trying to read them back raises InvalidRequestError, which
     # silently kills the pipeline before AnalysisResult is ever created.
     authenticity_scores = []
+    emotion_labels = []
 
     for answer in answers:
         video_path = answer.video_path
@@ -46,6 +48,7 @@ def run_analysis_pipeline(session_id: int, user_id: int, db: DBSession):
         # Step 1: Extract audio
         audio_path = extract_audio_from_video(video_path)
         answer.audio_path = audio_path
+        audio_emotion = analyse_emotion(audio_path)
 
         # Step 2: Transcribe — returns (transcript, duration, is_speaking)
         transcript, duration, is_speaking = transcribe_audio(audio_path)
@@ -63,7 +66,9 @@ def run_analysis_pipeline(session_id: int, user_id: int, db: DBSession):
         )
 
         # Step 5: Video/nonverbal analysis
-        nonverbal_result = analyse_video(video_path)
+        nonverbal_result = analyse_video(video_path, audio_emotion=audio_emotion)
+        if audio_emotion:
+            emotion_labels.append(audio_emotion["dominant_emotion"])
         visual_speaking = nonverbal_result.get("visual_speaking", False)
         # Do NOT set answer.visual_speaking — not a DB column
 
@@ -90,6 +95,9 @@ def run_analysis_pipeline(session_id: int, user_id: int, db: DBSession):
         _merge(agg_speech_metrics, speech_result)
         _merge(agg_nonverbal_metrics, nonverbal_result)
         _merge(agg_content_metrics, content_result)
+        
+    if emotion_labels:
+        agg_nonverbal_metrics["dominant_emotion"] = Counter(emotion_labels).most_common(1)[0][0]
 
     # Commit per-answer scores to DB (transcript, duration, fluency, content, nonverbal)
     db.commit()
@@ -108,9 +116,11 @@ def run_analysis_pipeline(session_id: int, user_id: int, db: DBSession):
 
     # Apply authenticity penalty to nonverbal and overall
     nonverbal_score = round(nonverbal_score * authenticity_factor, 1)
+    # Poor content drags the whole score down; fluency/posture can't hide it
+    content_factor = 0.4 + 0.6 * min(content_score / 60.0, 1.0)
     overall_score   = round(
         (0.4 * content_score + 0.35 * fluency_score + 0.25 * nonverbal_score)
-        * authenticity_factor,
+        * content_factor * authenticity_factor,
         1,
     )
 

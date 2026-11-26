@@ -2,15 +2,14 @@
 import cv2
 import numpy as np
 import mediapipe as mp
-from collections import Counter
 
-# Lazy import DeepFace to avoid slow startup if not needed
-_deepface_available = True
-try:
-    from deepface import DeepFace
-except ImportError:
-    _deepface_available = False
-    print("[ORION] DeepFace not available — emotion analysis disabled")
+# # Lazy import DeepFace to avoid slow startup if not needed
+# _deepface_available = True
+# try:
+#     from deepface import DeepFace
+# except ImportError:
+#     _deepface_available = False
+#     print("[ORION] DeepFace not available — emotion analysis disabled")
 
 mp_face_mesh = mp.solutions.face_mesh
 mp_pose     = mp.solutions.pose
@@ -23,7 +22,7 @@ RIGHT_EYE = [362, 263]
 NOSE_TIP  = 1
 
 
-def analyse_video(video_path: str, sample_every_n_frames: int = 15) -> dict:
+def analyse_video(video_path: str, sample_every_n_frames: int = 15, audio_emotion=None) -> dict: 
     """
     Samples every N frames from the video and returns non-verbal metrics.
     sample_every_n_frames=15 at 30fps = analyse 2 frames/sec.
@@ -38,7 +37,6 @@ def analyse_video(video_path: str, sample_every_n_frames: int = 15) -> dict:
     on_camera_frames      = 0
     good_posture_frames   = 0
     total_sampled         = 0
-    emotion_counts        = Counter()
     head_yaw_values       = []
     mouth_movement_values = []
 
@@ -91,19 +89,19 @@ def analyse_video(video_path: str, sample_every_n_frames: int = 15) -> dict:
             if yaw_offset < 0.05:
                 on_camera_frames += 1
 
-            # ── Emotion (DeepFace, sample every 5th analysed frame) ───────────
-            if _deepface_available and total_sampled % 5 == 0:
-                try:
-                    analysis = DeepFace.analyze(
-                        rgb,
-                        actions=["emotion"],
-                        enforce_detection=False,
-                        silent=True,
-                    )
-                    dominant = analysis[0]["dominant_emotion"]
-                    emotion_counts[dominant] += 1
-                except Exception:
-                    pass
+            # # ── Emotion (DeepFace, sample every 5th analysed frame) ───────────
+            # if _deepface_available and total_sampled % 5 == 0:
+            #     try:
+            #         analysis = DeepFace.analyze(
+            #             rgb,
+            #             actions=["emotion"],
+            #             enforce_detection=False,
+            #             silent=True,
+            #         )
+            #         dominant = analysis[0]["dominant_emotion"]
+            #         emotion_counts[dominant] += 1
+            #     except Exception:
+            #         pass
 
         # ── Posture (MediaPipe Pose) ───────────────────────────────────────────
         pose_result = pose_detector.process(rgb)
@@ -133,8 +131,9 @@ def analyse_video(video_path: str, sample_every_n_frames: int = 15) -> dict:
 
     movement_std = np.std(mouth_movement_values) if mouth_movement_values else 0.0
 
-    is_visually_speaking = (avg_movement > 0.02) and (movement_std > 0.005)
-    
+    print(f"[ORION] mouth avg={avg_movement:.4f} std={movement_std:.4f}")
+    is_visually_speaking = (avg_movement > 0.008) and (movement_std > 0.003)
+        
     # ── Compute scores ────────────────────────────────────────────────────────
     presence_rate = face_detected_frames / max(total_sampled, 1)
     eye_contact_pct = (on_camera_frames / max(face_detected_frames, 1)) * 100
@@ -151,17 +150,24 @@ def analyse_video(video_path: str, sample_every_n_frames: int = 15) -> dict:
     metrics["distraction_events"]    = distraction_events
     metrics["mean_head_yaw"]         = round(mean_yaw, 4)
 
-    # Dominant emotion
-    if emotion_counts:
-        dominant_emotion = emotion_counts.most_common(1)[0][0]
-        metrics["dominant_emotion"] = dominant_emotion
-        # Map emotions to confidence proxy
-        positive = {"neutral", "happy", "surprise"}
-        metrics["positive_emotion_pct"] = round(
-            sum(emotion_counts[e] for e in positive) / sum(emotion_counts.values()) * 100, 1
-        )
+    # # Dominant emotion
+    # if emotion_counts:
+    #     dominant_emotion = emotion_counts.most_common(1)[0][0]
+    #     metrics["dominant_emotion"] = dominant_emotion
+    #     # Map emotions to confidence proxy
+    #     positive = {"neutral", "happy", "surprise"}
+    #     metrics["positive_emotion_pct"] = round(
+    #         sum(emotion_counts[e] for e in positive) / sum(emotion_counts.values()) * 100, 1
+    #     )
+    # else:
+    #     metrics["dominant_emotion"]    = "unknown"
+    #     metrics["positive_emotion_pct"] = 50.0
+    # Emotion now comes from the audio model (passed in by the pipeline)
+    if audio_emotion:
+        metrics["dominant_emotion"] = audio_emotion["dominant_emotion"]
+        metrics["positive_emotion_pct"] = audio_emotion["positive_emotion_pct"]
     else:
-        metrics["dominant_emotion"]    = "unknown"
+        metrics["dominant_emotion"] = "unknown"
         metrics["positive_emotion_pct"] = 50.0
 
     # Nonverbal score formula
