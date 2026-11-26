@@ -1,5 +1,5 @@
 #!/bin/bash
-# ORION — Quick start frontend
+# ORION — Quick start frontend.
 set -e
 
 cd "$(dirname "$0")/frontend"
