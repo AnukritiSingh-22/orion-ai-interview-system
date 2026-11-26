@@ -29,7 +29,6 @@ numpy==1.26.4
 # ML / Video
 opencv-python-headless==4.9.0.80
 mediapipe==0.10.14
-deepface==0.0.93
 
 # NLP / Content analysis
 sentence-transformers==2.7.0
